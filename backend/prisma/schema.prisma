@@ -6,7 +6,23 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           Int      @id @default(autoincrement())
+  nickname     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  notes Note[]
+}
+
 model Note {
-  id    Int    @id @default(autoincrement())
-  title String
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
 }

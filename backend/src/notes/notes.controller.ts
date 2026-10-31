@@ -1,8 +1,19 @@
-import { Controller, Get, Post, Body, Delete, Param, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Delete,
+  Param,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('notes')
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
@@ -19,11 +30,11 @@ export class NotesController {
 
   @Delete(':id')
   deleteNote(@Param('id') id: string) {
-  return this.notesService.deleteNote(Number(id));
-}
-  
+    return this.notesService.deleteNote(Number(id));
+  }
+
   @Put(':id')
   updateNote(@Param('id') id: string, @Body() body: UpdateNoteDto) {
-  return this.notesService.updateNote(Number(id), body);
-}
+    return this.notesService.updateNote(Number(id), body);
+  }
 }
