@@ -1,8 +1,10 @@
 {
-  "dependencies": {
-    "@nestjs/jwt": "^11.0.2",
-    "@nestjs/mapped-types": "^2.1.1",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.15.1"
+  "name": "english-notes",
+  "private": true,
+  "scripts": {
+    "setup": "npm ci --prefix backend && npm ci --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test": "npm test --prefix backend -- --runInBand && npm run test:e2e --prefix backend -- --runInBand",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend"
   }
 }

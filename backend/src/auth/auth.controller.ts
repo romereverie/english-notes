@@ -1,8 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { AuthRateGuard } from './auth-rate.guard';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
+@UseGuards(AuthRateGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -14,6 +16,6 @@ export class AuthController {
 
   @Post('login')
   login(@Body() body: LoginDto) {
-  return this.authService.login(body);
+    return this.authService.login(body);
   }
 }

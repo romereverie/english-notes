@@ -7,34 +7,41 @@ import {
   Param,
   Put,
   UseGuards,
+  Req,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-
+type AuthRequest = { user: { userId: number } };
 @UseGuards(JwtAuthGuard)
 @Controller('notes')
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
-
-  @Get()
-  getNotes() {
-    return this.notesService.getNotes();
+  @Get() getNotes(@Req() req: AuthRequest) {
+    return this.notesService.getNotes(req.user.userId);
   }
-
-  @Post()
-  createNote(@Body() body: CreateNoteDto) {
-    return this.notesService.createNote(body);
+  @Get(':id') getNote(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.notesService.getNote(req.user.userId, id);
   }
-
-  @Delete(':id')
-  deleteNote(@Param('id') id: string) {
-    return this.notesService.deleteNote(Number(id));
+  @Post() createNote(@Req() req: AuthRequest, @Body() body: CreateNoteDto) {
+    return this.notesService.createNote(req.user.userId, body);
   }
-
-  @Put(':id')
-  updateNote(@Param('id') id: string, @Body() body: UpdateNoteDto) {
-    return this.notesService.updateNote(Number(id), body);
+  @Delete(':id') deleteNote(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.notesService.deleteNote(req.user.userId, id);
+  }
+  @Put(':id') updateNote(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateNoteDto,
+  ) {
+    return this.notesService.updateNote(req.user.userId, id, body);
   }
 }
