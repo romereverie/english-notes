@@ -1,4 +1,8 @@
-import {BadRequestException, Injectable} from '@nestjs/common';
+import {
+  ConflictException,
+  UnauthorizedException,
+  Injectable,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,22 +24,28 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new BadRequestException(
-        'Nickname is already taken',
-      );
+      throw new ConflictException('Nickname is already taken');
     }
 
-    const passwordHash = await bcrypt.hash(
-      dto.password,
-      10,
-    );
+    const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        nickname: dto.nickname,
-        passwordHash,
-      },
-    });
+    const user = await this.prisma.user
+      .create({
+        data: {
+          nickname: dto.nickname,
+          passwordHash,
+        },
+      })
+      .catch((error: unknown) => {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'P2002'
+        )
+          throw new ConflictException('Nickname is already taken');
+        throw error;
+      });
 
     return {
       id: user.id,
@@ -52,9 +62,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException(
-        'Invalid credentials',
-      );
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -63,16 +71,13 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new BadRequestException(
-        'Invalid credentials',
-      );
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessToken =
-      await this.jwtService.signAsync({
-        sub: user.id,
-        nickname: user.nickname,
-      });
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      nickname: user.nickname,
+    });
 
     return {
       accessToken,

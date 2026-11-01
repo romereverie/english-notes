@@ -1,119 +1,76 @@
-const API_URL = 'http://localhost:3000';
-
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+).replace(/\/$/, "");
 export type Note = {
   id: number;
   title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 };
-
-type LoginResponse = {
-  accessToken: string;
-};
-
-function getAccessToken() {
-  if (typeof window === 'undefined') {
-    return null;
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
   }
-
-  return localStorage.getItem('accessToken');
 }
-
-function getAuthHeaders(): HeadersInit {
-  const token = getAccessToken();
-
-  return {
-    'Content-Type': 'application/json',
-    ...(token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : {}),
-  };
+export function getAccessToken() {
+  return typeof window === "undefined"
+    ? null
+    : localStorage.getItem("accessToken");
 }
-
-export async function login(
-  nickname: string,
-  password: string,
-): Promise<LoginResponse> {
-  const res = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      nickname,
-      password,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error('Invalid nickname or password');
-  }
-
-  return res.json();
-}
-
 export function saveAccessToken(token: string) {
-  localStorage.setItem('accessToken', token);
+  localStorage.setItem("accessToken", token);
 }
-
 export function removeAccessToken() {
-  localStorage.removeItem('accessToken');
+  localStorage.removeItem("accessToken");
 }
-
-export function hasAccessToken() {
-  return Boolean(getAccessToken());
-}
-
-export async function getNotes(): Promise<Note[]> {
-  const res = await fetch(`${API_URL}/notes`, {
-    headers: getAuthHeaders(),
+async function request<T>(
+  path: string,
+  method = "GET",
+  body?: unknown,
+  authenticated = true,
+  signal?: AbortSignal,
+): Promise<T> {
+  const token = authenticated ? getAccessToken() : null;
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-
   if (!res.ok) {
-    throw new Error('Failed to load notes');
+    const data = await res.json().catch(() => null);
+    const message = data?.message;
+    throw new ApiError(
+      Array.isArray(message)
+        ? message.join("; ")
+        : typeof message === "string"
+          ? message
+          : "Request failed. Please try again.",
+      res.status,
+    );
   }
-
   return res.json();
 }
-
-export async function createNote(title: string): Promise<Note> {
-  const res = await fetch(`${API_URL}/notes`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ title }),
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to create note');
-  }
-
-  return res.json();
-}
-
-export async function updateNote(
-  id: number,
-  title: string,
-): Promise<Note> {
-  const res = await fetch(`${API_URL}/notes/${id}`, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ title }),
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to update note');
-  }
-
-  return res.json();
-}
-
-export async function deleteNote(id: number): Promise<void> {
-  const res = await fetch(`${API_URL}/notes/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to delete note');
-  }
-}
+export const login = (nickname: string, password: string) =>
+  request<{ accessToken: string }>(
+    "/auth/login",
+    "POST",
+    { nickname, password },
+    false,
+  );
+export const register = (nickname: string, password: string) =>
+  request("/auth/register", "POST", { nickname, password }, false);
+export const getNotes = (signal?: AbortSignal) =>
+  request<Note[]>("/notes", "GET", undefined, true, signal);
+export const createNote = (title: string, content: string) =>
+  request<Note>("/notes", "POST", { title, content });
+export const updateNote = (id: number, title: string, content: string) =>
+  request<Note>(`/notes/${id}`, "PUT", { title, content });
+export const deleteNote = (id: number) => request(`/notes/${id}`, "DELETE");
